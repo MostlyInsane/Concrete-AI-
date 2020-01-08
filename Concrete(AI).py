@@ -1,14 +1,25 @@
 import pandas as pd
 import numpy as np
-from sklearn.preprocessing import MinMaxScaler
 
+import matplotlib
+matplotlib.use('TkAgg')
+import matplotlib.pyplot as plt
+
+import tensorflow as tf
+
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.metrics import r2_score
+
+import keras
 from keras.models import Sequential
 from keras.layers import Activation
 from keras.layers.core import Dense
+from keras.optimizers import Adam
+from keras import backend as K
 
 # PreProcess The DataSet :
 
-Data = pd.read_excel(r'C:\Users\MONSTERRRRR PC!!!!\Desktop\My Junk\DataSets\Concrete_Data.xls')
+Data = pd.read_excel(r'/Users/akhil/Desktop/Proj/Utilities/Concrete_Data.xls')
 
 Data = Data.rename(columns={'Cement (component 1)(kg in a m^3 mixture)'               : 'Cement',
                               'Blast Furnace Slag (component 2)(kg in a m^3 mixture)' : 'Slag',
@@ -21,36 +32,68 @@ Data = Data.rename(columns={'Cement (component 1)(kg in a m^3 mixture)'         
                               'Concrete compressive strength(MPa, megapascals)'       : 'Concrete Strength'
                             })
 
-Train_Data = Data[0:824]                                              # Training Data
-CrossValidate_Data = Data[824:926]                                    # Validation Data
-Test_Data = Data[926:1030]                                            # Test Data
+Train_Data = Data[0:926]                                                             # Training Data
+Test_Data = Data[926:1030]                                                           # Test Data
 
-Train_Data = np.array(Train_Data)                                     # Convert the DataFrame into NumPy Arrays
+Train_Data_Samples  = np.array(Train_Data.iloc[0:, 0:8])                             # Convert the DataFrame Into NumPy Arrays (Only Features)
+Train_Data_Strength = np.array(Train_Data.iloc[0:, Train_Data.shape[1]-1])           # Convert the DataFrame Into Numpy Arrays (Only Strength)
 
-Scaler = MinMaxScaler(feature_range=(0, 1))                           # Scaling object with specified range
-Scaled_Train_Date = Scaler.fit_transform(Train_Data)                  # Scaled Train_Data with Scaling Object
+Test_Data_Samples   = np.array(Test_Data.iloc[0:, 0:Test_Data.shape[1]-1])
+Test_Data_Strength  = np.array(Test_Data.iloc[0:, Test_Data.shape[1]-1])
 
-# Creating The Model :
+Scaler = MinMaxScaler(feature_range=(0, 1))                                         # Scaling object with specified range
+Scaled_Train_Data = Scaler.fit_transform(Train_Data_Samples)                        # Scaled Train_Data
+Scaled_Test_Data  = Scaler.fit_transform(Test_Data_Samples)                         # Scaled Test_Data
+
+class PlotLosses (keras.callbacks.Callback):
+
+    def on_train_begin(self, logs={}):
+
+        self.i = 0
+        self.epoch_iter =[]
+        self.training_loss = []
+        self.validation_loss = []
+        self.logs = []
+
+    def on_epoch_end(self, epoch, logs={}):
+
+        self.logs.append(logs)
+        self.epoch_iter.append(self.i)
+        self.training_loss.append(logs.get('loss'))
+        self.validation_loss.append(logs.get('val_loss'))
+        self.i += 1
+
+        plt.plot(self.epoch_iter, self.training_loss, label='Train_Loss', color='deepskyblue')
+        plt.plot(self.epoch_iter, self.validation_loss, label='Valid_Loss',color = 'orange')
+        plt.title('Model Loss')
+        plt.xlabel('Epochs')
+        plt.ylabel('Loss')
+        plt.draw()
+        plt.pause(0.01)
+
+
+plot_losses = PlotLosses()
+
+## Creating The Model :
 
 Model = Sequential([
-    Dense(8, input_shape=(8,), Activation='relu'),
-    Dense(8, Activation='relu'),
-    Dense(1,)
+    Dense(17, input_shape=(8,), activation='relu'),
+    Dense(1)
 ])
 
+Model.summary()                                                                                                                                                       # Summary Of Created Framework
 
+Model.load_weights('/Users/akhil/Desktop/Proj/Utilities/Model_Weights_lr_1.h5')                                                                                         # Loading Weights
 
+Model.compile(Adam(lr = 0.001), loss='mean_absolute_percentage_error')                                                                                                # Specifying Optimizer, Cost Function
+History = Model.fit(Train_Data_Samples, Train_Data_Strength, validation_split=0.11, batch_size=32, epochs=0, shuffle=True, verbose=2, callbacks=[plot_losses])        # Training the Model
 
+Model.save_weights('/Users/akhil/Desktop/Proj/Utilities/Model_Weights_lr.h5')
 
+Predictions = Model.predict(Test_Data_Samples)
+print (r2_score(Test_Data_Strength,Predictions))
 
-
-
-
-
-
-
-
-
-
-
-
+plt.show()
+plt.scatter(Test_Data_Strength, Predictions, marker='D')
+plt.plot([0, 50, 100],[0, 50, 100], color='black')
+plt.show()
