@@ -12,10 +12,12 @@ from sklearn.metrics import r2_score
 
 import keras
 from keras.models import Sequential
-from keras.layers import Activation
+from keras.layers import Activation, advanced_activations
 from keras.layers.core import Dense
 from keras.optimizers import Adam
 from keras import backend as K
+from keras.callbacks.callbacks import ModelCheckpoint
+from keras.callbacks.callbacks import EarlyStopping
 
 # PreProcess The DataSet :
 
@@ -77,18 +79,21 @@ plot_losses = PlotLosses()
 ## Creating The Model :
 
 Model = Sequential([
-    Dense(17, input_shape=(8,), activation='relu'),
+    Dense(25, input_shape=(8,), activation='relu'),
+    Dense(25, activation='relu'),
     Dense(1)
 ])
 
 Model.summary()                                                                                                                                                       # Summary Of Created Framework
 
-Model.load_weights('/Users/akhil/Desktop/Proj/Utilities/Model_Weights_lr_1.h5')                                                                                         # Loading Weights
+MCP = ModelCheckpoint('/Users/akhil/Desktop/Proj/Utilities/Model_Weights_lr_2.h5', 'val_loss', 0, True, True, mode='auto', period=1)                                  # Model Checkpoint
+
+Model.load_weights('/Users/akhil/Desktop/Proj/Utilities/Model_Weights_lr.h5')                                                                                       # Loading Weights
 
 Model.compile(Adam(lr = 0.001), loss='mean_absolute_percentage_error')                                                                                                # Specifying Optimizer, Cost Function
-History = Model.fit(Train_Data_Samples, Train_Data_Strength, validation_split=0.11, batch_size=32, epochs=0, shuffle=True, verbose=2, callbacks=[plot_losses])        # Training the Model
+History = Model.fit(Train_Data_Samples, Train_Data_Strength, validation_split=0.11, batch_size=32, epochs=000, shuffle=True, verbose=2, callbacks=[plot_losses, MCP])   # Training the Model
 
-Model.save_weights('/Users/akhil/Desktop/Proj/Utilities/Model_Weights_lr.h5')
+#Model.save_weights('/Users/akhil/Desktop/Proj/Utilities/Model_Weights_lr_3.h5')
 
 Predictions = Model.predict(Test_Data_Samples)
 print (r2_score(Test_Data_Strength,Predictions))
